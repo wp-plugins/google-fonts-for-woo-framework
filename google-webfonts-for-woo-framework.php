@@ -6,7 +6,7 @@
 Plugin Name: Google Webfonts For Woo Framework
 Plugin URI: https://github.com/academe/google-webfonts-for-woo-framework
 Description: Adds all missing Google webfonts to the WooThemes themes that use the Woo Framework.
-Version: 1.0.0
+Version: 1.1.0
 Author: Jason Judge
 Author URI: http://www.academe.co.uk/
 License: GPLv2 or later
@@ -81,6 +81,9 @@ class GoogleWebfontsForWooFramework
     // The Google API URL we will fetch the font list from.
     public $api_url = 'https://www.googleapis.com/webfonts/v1/webfonts?key=';
 
+    // Admin notice text.
+    public $admin_notice = '';
+
     // Initilialise the plugin.
     public function init() {
         // Add the missing fonts to the non-admin pages too.
@@ -129,16 +132,35 @@ class GoogleWebfontsForWooFramework
         // Make a list of font families we have in the list already.
         $families = array();
         foreach($google_fonts as $font) {
-            $families[$font['name']] = true;
+            $families[$font['name']] = $font['variant'];
         }
 
         // Now we have a list to check against, we can insert the fonts that
         // are missing. The Woo Framework will deal with sorting this list later, so we
         // just tag them on the end.
+        $variant_updates = array();
         foreach($all_fonts as $font) {
-            if (isset($families[$font['name']])) continue;
+            if (isset($families[$font['name']])) {
+                // The font exists, but does it need its variants updated?
+                if ($families[$font['name']] == $font['variant']) continue;
+
+                // Yes, the variants are different.
+                // We need to update the existing font. They are not indexed well, unfortunatly,
+                // so we loop through them all. We'll just keep a list an do that at the end.
+                $variant_updates[$font['name']] = $font['variant'];
+                continue;
+            }
 
             $this->new_fonts[] = $font;
+        }
+
+        if (!empty($variant_updates)) {
+            foreach($google_fonts as $key => $font) {
+                if (isset($variant_updates[$font['name']])) {
+                    $google_fonts[$key]['variant'] = $variant_updates[$font['name']];
+                    $this->old_fonts[$key]['variant'] = $variant_updates[$font['name']];
+                }
+            }
         }
 
         // If we have any fonts to add, then add them to the list.
@@ -162,6 +184,17 @@ class GoogleWebfontsForWooFramework
     }
 
     /**
+     * Display an admin notice if there is one.
+     */
+
+    public function display_admin_notice() {
+        if ($this->admin_notice == '') return;
+        echo '<div class="updated">';
+        echo $this->admin_notice;
+        echo '</div>';
+    }
+
+    /**
      * Get the full list of fonts from Google.
      */
 
@@ -176,6 +209,13 @@ class GoogleWebfontsForWooFramework
         // The API key should be URL-safe.
         // We need to ensure it is when setting it in the admin page.
         $api_data = wp_remote_get($this->api_url . $google_api_key);
+
+        // If the fetch failed, then report it to the admin.
+        if (is_wp_error($api_data)) {
+            $error_message = $api_data->get_error_message();
+            $this->admin_notice = "<p>Error fetching Google font: $error_message</p>";
+            return $font_list;
+        }
 
         $response = $api_data['response'];
 

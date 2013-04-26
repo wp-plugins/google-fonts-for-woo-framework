@@ -4,7 +4,7 @@ Donate link:
 Tags: woothemes, google webfonts
 Requires at least: 3.3
 Tested up to: 3.5.1
-Stable tag: 1.0.0
+Stable tag: 1.1.0
 License: GPLv2 or later
 License URI: http://www.gnu.org/licenses/gpl-2.0.html
 
@@ -30,7 +30,9 @@ This plugin has been tested against PHP5.3 and the project repository is here:
 
 [https://github.com/academe/google-webfonts-for-woo-framework/](https://github.com/academe/google-webfonts-for-woo-framework/)
 
-Changes have been made so that it works with PHP5.2 and has been reported as working. However, I work under 5.3 so some incompatibilities may creep in by accident from time-to-time - just report tham and I will do my best to fix as quickly as possible.
+Changes have been made so that it works with PHP5.2 and has been reported as working. However, I work under 5.3 so some incompatibilities may creep in by accident from time-to-time - just report them and I will do my best to fix as quickly as possible.
+
+Please let me know how this plugin works for you, whether you like it, and how it can be improved.
 
 == Installation ==
 
@@ -54,12 +56,21 @@ Feel free to raise issues there and make pull requests, as well as in the normal
 The option used to store your API key shares it name with several other popular Google Webfonts plugins.
 If you have used, or are using, those plugins too, then the API key setting will be shared. This is by design.
 
+= I see errors reported when fetching the nerw Google webfonts =
+
+Some hosts may not be set up to allow your site to fetch data from remote sites. Please report any 
+such errors on the plugin page or github, and we will try looking for a workaround.
+
 == Screenshots ==
 
 1. 
 2. 
 
 == Changelog ==
+
+= Version 1.1.0 =
+* Reports errors fetching Google fonts.
+* Updates the built-in framework fonts with new variations, improving quality of displayed fonts.
 
 = Version 1.0.0 =
 * i18n complete.

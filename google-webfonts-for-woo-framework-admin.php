@@ -36,6 +36,9 @@ class GoogleWebfontsForWooFrameworkAdmin extends GoogleWebfontsForWooFramework
             add_action('admin_init', array($this, 'register_settings'));
         }
 
+        // Action for displaying admin notices.
+        add_action('admin_notices', array($this, 'display_admin_notice'));
+
         parent::init();
     }
 
@@ -108,7 +111,7 @@ class GoogleWebfontsForWooFrameworkAdmin extends GoogleWebfontsForWooFramework
         // List of added fonts (read-only).
         add_settings_field(
             self::settings_field_old_fonts,
-            __('Framework fonts (view only)'),
+            __('Framework fonts built-in'),
             array($this, self::settings_field_old_fonts . '_field'),
             self::settings_page,
             self::settings_section_id
@@ -117,7 +120,7 @@ class GoogleWebfontsForWooFrameworkAdmin extends GoogleWebfontsForWooFramework
         // List of added fonts (read-only).
         add_settings_field(
             self::settings_field_new_fonts,
-            __('New fonts introduced (view only)'),
+            __('New fonts available and used'),
             array($this, self::settings_field_new_fonts . '_field'),
             self::settings_page,
             self::settings_section_id
@@ -138,7 +141,9 @@ class GoogleWebfontsForWooFrameworkAdmin extends GoogleWebfontsForWooFramework
 
     public function plugin_main_section_text()
     {
-        echo '<p>' . __('Google Webfonts for WooThemes Woo Framework. Fonts show seleceted have been used within the theme.') . '</p>';
+        echo '<p>' . __('Google Webfonts for WooThemes Woo Framework. All fonts listed here are available to the theme.') . '</p>';
+        echo '<p>' . __('Fonts shown selected here have been used in the theme.') . '</p>';
+        echo '<p>' . __('To preview any fonts, select the fonts from either list and press the preview button..') . '</p>';
     }
 
     // Display the input fields.
@@ -147,6 +152,19 @@ class GoogleWebfontsForWooFrameworkAdmin extends GoogleWebfontsForWooFramework
     public function google_api_key_field() {
         $option = get_option(self::settings_field_api_key, '');
         echo "<input id='" . self::settings_field_api_key . "' name='" . self::settings_field_api_key . "' size='80' type='text' value='{$option}' />";
+    }
+
+    // Expand a list of variants into a more friendly list.
+    // There has to be a decent way to parse the Google variant codes - just not worked it out yet.
+    public function expand_variants($variants)
+    {
+        $variants_arr = explode(',', $variants);
+
+        return implode(', ', preg_replace(
+            array('/:/', '/bi$/', '/r$/', '/i$/', '/b$/'),
+            array('', 'bold-italic', 'regular', 'italic', 'bold'),
+            $variants_arr
+        ));
     }
 
     // Display the list of original framework fonts.
@@ -161,7 +179,11 @@ class GoogleWebfontsForWooFrameworkAdmin extends GoogleWebfontsForWooFramework
             $i = 1;
             foreach($this->old_fonts as $font) {
                 $selected = (isset($used_fonts[$font['name']])) ? ' selected="selected"' : '';
-                echo '<option value="'. $font['name'] .'"' . $selected . '>' .$font['name']. '</option>';
+
+                echo '<option value="'. $font['name'] .'"' . $selected . '>' 
+                    . $font['name'] 
+                    . (!empty($font['variant']) ? ' (' . $this->expand_variants($font['variant']) . ')' : '')
+                    . '</option>';
             }
 
             echo '</select> (' . count($this->old_fonts) . ')';
@@ -174,14 +196,18 @@ class GoogleWebfontsForWooFrameworkAdmin extends GoogleWebfontsForWooFramework
         $used_fonts = $this->fonts_used_in_theme();
 
         if (empty($this->new_fonts)) {
-            _e('No new fonts found');
+            _e('No new fonts found (check the API)');
         } else {
             echo '<select name="' . self::settings_field_new_fonts . '" multiple="multiple" size="10" class="' . self::settings_field_select_class . '">';
 
             $i = 1;
             foreach($this->new_fonts as $font) {
                 $selected = (isset($used_fonts[$font['name']])) ? ' selected="selected"' : '';
-                echo '<option value="'. $font['name'] .'"' . $selected . '>' . $font['name'] . '</option>';
+
+                echo '<option value="'. $font['name'] .'"' . $selected . '>' 
+                    . $font['name']
+                    . (!empty($font['variant']) ? ' (' . $this->expand_variants($font['variant']) . ')' : '')
+                    . '</option>';
             }
 
             echo '</select> (' . count($this->new_fonts) . ')';
@@ -196,65 +222,13 @@ class GoogleWebfontsForWooFrameworkAdmin extends GoogleWebfontsForWooFramework
 
         echo '<p><input type="submit" id="preview-fonts" value="' . __('Preview Fonts') . '" onClick="jQuery().gwfwFontPreview({clear: true}); return false;" /></p>';
 
-        // form id = self::settings_form_id
-
-        echo '<script type="text/javascript">';
-        echo 'jQuery(document).ready(function($){$("#gwfw-font-previews").html("This is Hello World by JQuery");});';
-
-        // TODO: this to go into a separate file.
-        echo <<<JSEND
-(function($){
-jQuery.fn.gwfwFontPreview = (function(options) {
-    var settings = jQuery.extend({
-        clear: false,
-        form_id: 'gwfc_settings_form',
-        font_selector_class: 'font-selector',
-        preview_text: 'The quick brown fox jumps over the lazy dog',
-        google_bas_url: 'http://fonts.googleapis.com/css?family='
-    }, options);
-
-    // If 'clear' is set, then remove any fonts previewed so far.
-    if (settings.clear) {
-        $('#gwfw-font-previews').html('');
-    }
-
-    // Get a list of fonts that are selected.
-    // TODO: pass the form ID in as a parameter.
-    var font_list = [];
-
-    // For each select element that contains a list of fonts (identified by the form id
-    // and the class name we have given them), pull out
-    // all the selected fonts so we have a full list.
-    $('#' + settings.form_id + ' select.' + settings.font_selector_class + ' :selected')
-        .each(function(i){
-            font_list.push($(this).val());
-        });
-    ;
-
-    // TODO: sort this list into reverse value order, since we have combined
-    // font names from several different form elements.
-
-    // If we have any selected fonts, then loop through them to create the previews.
-    if (font_list.length > 0) {
-        for(var i = 0; i < font_list.length; i++) {
-            // Display the preview text.
-            $('#gwfw-font-previews').prepend(
-                '<p style="font-weight: bold">' + font_list[i] + '</p>'
-                + '<p style="font-family:' + font_list[i] + '; font-size: 36pt; line-height: 36pt;">' + settings.preview_text + '</p>'
-            );
-
-            // Since the Woo framework does not load the fonts in the admin section until needed, 
-            // we will load them through AJAX.
-            $('head').append('<link href="' + settings.google_bas_url + font_list[i] + '" rel="stylesheet" type="text/css">');
-        }
-    }
-
-    return this;
-});
-}) (jQuery);
-JSEND;
-
-        echo '</script>';
+        wp_enqueue_script(
+            'preview-fonts',
+            plugins_url('google-fonts-for-woo-framework/preview-fonts.js'),
+            false, // dependances TODO - this depends on jQuery
+            false,
+            false 
+        );
 
         // This is where the previews will be placed.
         echo '<div id="gwfw-font-previews"></div>';
