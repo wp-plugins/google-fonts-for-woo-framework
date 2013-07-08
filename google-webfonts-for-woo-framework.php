@@ -42,16 +42,6 @@ function GoogleWebfontsForWooFramework_activation()
 }
 register_activation_hook(__FILE__, 'GoogleWebfontsForWooFramework_activation');
 
-/*
-// PHP5.3 only.
-register_activation_hook(__FILE__, function() {
-    $google_api_key = get_option('google_api_key');
-    if ($google_api_key === false) {
-        add_option('google_api_key', '', false, true);
-    }
-});
-*/
-
 // Set the main plugin as a global object.
 // There is a standard visitor version and an admin extended version.
 if (is_admin()) {
@@ -68,15 +58,9 @@ class GoogleWebfontsForWooFramework
     // The name of the cahce for the the fonts.
     public $trans_cache_name = 'google_webfonts_for_woo_framework_cache';
 
-    // The time the fonts are cached for, before we fetch a new batch from Google.
-    // TODO: make the time configurable, which would include "indefinite".
-    public $cache_time = 43200; // 60*60*12 seconds = 12 hours
-
-    // New fonts that this plugin brings to the framework.
-    public $new_fonts = array();
-
     // A snapshot of fonts the framework includes.
-    public $old_fonts = array();
+    // Format is the Woo array('name'=>{font},'variant'=>':'{variant-list})
+    public $old_woo_google_fonts = array();
 
     // The Google API URL we will fetch the font list from.
     public $api_url = 'https://www.googleapis.com/webfonts/v1/webfonts?key=';
@@ -89,7 +73,7 @@ class GoogleWebfontsForWooFramework
         // Add the missing fonts to the non-admin pages too.
         // It needs to be an early action (5) to get in before the theme hook
         // that uses the font list.
-        add_action('wp_head', array($this, 'action_add_fonts'), 5);
+        add_action('wp_head', array($this, 'action_set_fonts'), 5);
     }
 
     /**
@@ -106,169 +90,103 @@ class GoogleWebfontsForWooFramework
      * Insert any missing Google fonts.
      */
 
-    public function action_add_fonts()
+    public function action_set_fonts()
     {
         // This array is what the Woo Framework defines and uses.
         global $google_fonts;
 
         // If there is no global google fonts list, bail out.
-        if (empty($google_fonts) || !is_array($google_fonts)) return;
+        // It probably means the Woo framework has fundamentally changed the way it works.
+        if (empty($google_fonts) || ! is_array($google_fonts)) return;
 
         // Take a snapshot, before we mess with the list, and sort them by name.
-        $this->old_fonts = $google_fonts;
-        uasort($this->old_fonts, array($this, 'sort_font_array'));
-
-        /*
-        // PHP5.3 only.
-        uasort($this->old_fonts, function($a, $b) {
-            return ($a['name'] < $b['name']) ? -1 : 1;
-        });
-        */
+        // A closure would be nice here, but we are restricted to PHP 5.2 for WP.
+        // Only do this if we are in an admin page; we don't need the "before" list any
+        // other time.
+        if (is_admin()) {
+            $this->old_woo_google_fonts = $google_fonts;
+            uasort($this->old_woo_google_fonts, array($this, 'sort_font_array'));
+        }
 
         // Get the full list of Google fonts available.
         $all_fonts = $this->getGoogleFontsCached();
-        if (!$all_fonts) return;
 
-        // Make a list of font families we have in the list already.
-        $families = array();
-        foreach($google_fonts as $font) {
-            $families[$font['name']] = $font['variant'];
-        }
+        if ( ! $all_fonts) return;
 
-        // Now we have a list to check against, we can insert the fonts that
-        // are missing. The Woo Framework will deal with sorting this list later, so we
-        // just tag them on the end.
-        $variant_updates = array();
-        foreach($all_fonts as $font) {
-            if (isset($families[$font['name']])) {
-                // The font exists, but does it need its variants updated?
-                if ($families[$font['name']] == $font['variant']) continue;
-
-                // Yes, the variants are different.
-                // We need to update the existing font. They are not indexed well, unfortunatly,
-                // so we loop through them all. We'll just keep a list an do that at the end.
-                $variant_updates[$font['name']] = $font['variant'];
-                continue;
-            }
-
-            $this->new_fonts[] = $font;
-        }
-
-        if (!empty($variant_updates)) {
-            foreach($google_fonts as $key => $font) {
-                if (isset($variant_updates[$font['name']])) {
-                    $google_fonts[$key]['variant'] = $variant_updates[$font['name']];
-                    $this->old_fonts[$key]['variant'] = $variant_updates[$font['name']];
-                }
-            }
-        }
-
-        // If we have any fonts to add, then add them to the list.
-        if (!empty($this->new_fonts)) $google_fonts = array_merge($google_fonts, $this->new_fonts);
+        // Completely replace the Woo Framework list with the new list.
+        $google_fonts = $all_fonts;
     }
 
     /**
-     * Get the full list of fonts from Google, formated for Woo Framework and
-     * cached.
+     * Get the full list of Google fonts, formatted for Woo Framework.
+     * We look first in the cache generated by the settings page, and then in
+     * the local cache file if not in the transient cache generated in the settings
+     * page.
      */
 
     public function getGoogleFontsCached()
     {
         // Transient caching.
         if (false === ($fonts = get_transient($this->trans_cache_name))) {
-            $fonts = $this->getGoogleFonts();
-            if (!empty($fonts)) set_transient($this->trans_cache_name, $fonts, $this->cache_time);
+            $fonts = $this->getFallbackFonts();
+
+            // Cache indefinitely. The cache will be refreshed on a visit to the settings page.
+            if (!empty($fonts)) set_transient($this->trans_cache_name, $fonts);
         }
 
         return $fonts;
     }
 
     /**
-     * Display an admin notice if there is one.
+     * Returns fallback font data, in the same format as getGoogleFontData().
      */
 
-    public function display_admin_notice() {
-        if ($this->admin_notice == '') return;
-        echo '<div class="updated">';
-        echo $this->admin_notice;
-        echo '</div>';
-    }
-
-    /**
-     * Get the full list of fonts from Google.
-     */
-
-    public function getGoogleFonts()
+    public function getFallbackFontData()
     {
-        $google_api_key = get_option('google_api_key', '');
-        $font_list = false;
+        $file = dirname(__FILE__) . '/fonts.json';
 
-        // If not API key is set yet, then abort.
-        if (empty($google_api_key)) return $font_list;
-
-        // The API key should be URL-safe.
-        // We need to ensure it is when setting it in the admin page.
-        $api_data = wp_remote_get($this->api_url . $google_api_key);
-
-        // If the fetch failed, then report it to the admin.
-        if (is_wp_error($api_data)) {
-            $error_message = $api_data->get_error_message();
-            $this->admin_notice = "<p>Error fetching Google font: $error_message</p>";
-            return $font_list;
+        if (is_readable($file)) {
+            $data = file_get_contents($file);
+            return json_decode($data, true);
         }
 
-        $response = $api_data['response'];
+        return null;
+    }
 
-        if (200 === $response['code']) {
-            $font_list = json_decode($api_data['body'], true);
-        }
+    /**
+     * Returns fonts, formatted for Woo Framework, pulled from the local fallback file.
+     */
 
-        // Now we should have $font_list.
-        // If it is valid, then save it in a more permanent cache after some processing.
-        // Woo Framework needs entries like this:
-        //    array( 'name' => "Caudex", 'variant' => ':r,b,i,bi')
-        // while Google provides a very different syntax, using a mix of font weights (instead
-        // of bold/regular/etc) and names (italic/regular/etc).
-        // It is not yet clear just how Woo Framework uses these variants beyond just passing them to Google.
-        // e.g. These provided by Google API: "regular", "italic", "900", "900italic"
-        // need to be translated into this: ":400,900italic,900,400italic" so it can
-        // be used on the web page. I think Woo Framework does actually *use* these variants,
-        // which it could in the admin interface, but it just blindly passes them to
-        // Google to ask for all variants to be passed back to the web browser, which TBH
-        // is inneficient, as it is requresting variants that may never be used.
-        // https://developers.google.com/webfonts/docs/getting_started
-        // According to the Google docs, we can specify the full names, abbreviations
-        // or the weights - all are equivalent.
+    public function getFallbackFonts()
+    {
+        $font_data = $this->getFallbackFontData();
+        $woo_fonts = array();
 
-        // If we don't have an array of fonts, bail out now.
-        if (empty($font_list) || !is_array($font_list)) return $font_list;
-
-        // We want to go through the list and abbreviate it.
-        // Some of the variant names are abreviated. We could go further, with the weights.
-        // For example, 700 == bold == b == 7
-        $fonts = array();
-        foreach($font_list['items'] as $font) {
-            if (!empty($font['variants'])) {
-                $variants = preg_replace(
-                    array('/^regular$/', '/italic/', '/bold/', '/^700$/', '/^700i$/'),
-                    array('r', 'i', 'b', 'b', 'bi'),
-                    $font['variants']
+        if ( ! empty($font_date)) {
+            foreach($font_data as $family => $variants) {
+                $woo_fonts[] = array(
+                    'name' => $family,
+                    'variant' => ':' . implode(',', $this->abbreviateVariants($variants))
                 );
-
-                // Woo Framework expects the leading ":" to be included in the variant list. It does
-                // not insert it at the point of use.
-                $variant = ':' . implode(',', $variants);
-            } else {
-                $variant = '';
             }
-
-            $fonts[] = array(
-                'name' => $font['family'],
-                'variant' => $variant,
-            );
         }
 
-        return $fonts;
+        return $woo_fonts;
+    }
+
+    /**
+     * Abbreviate an array of variants so it is as short as possible.
+     * This helps to convert our internal font data to the Woo Framework format.
+     */
+
+    public function abbreviateVariants($variants)
+    {
+        return str_replace(
+            array('400', '700'),
+            array('r', 'b'),
+            $variants
+        );
     }
 }
+
 
