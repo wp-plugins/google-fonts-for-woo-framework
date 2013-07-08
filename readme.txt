@@ -30,7 +30,7 @@ This plugin has been tested against PHP5.3 and the project repository is here:
 
 [https://github.com/academe/google-webfonts-for-woo-framework/](https://github.com/academe/google-webfonts-for-woo-framework/)
 
-Changes have been made so that it works with PHP5.2 and has been reported as working. However, I work under 5.3 so some incompatibilities may creep in by accident from time-to-time - just report them and I will do my best to fix as quickly as possible.
+Changes have been made so that it works with PHP5.2 and has been reported as working. However, I work underat least 5.3 so some incompatibilities may creep in by accident from time-to-time - just report them and I will do my best to fix as quickly as possible.
 
 Please let me know how this plugin works for you, whether you like it, and how it can be improved.
 
@@ -67,6 +67,13 @@ If you have used, or are using, those plugins too, then the API key setting will
 
 Some hosts may not be set up to allow your site to fetch data from remote sites. Please report any 
 such errors on the plugin page or github, and we will try looking for a workaround.
+
+= Can I use the new fonts in a page body? =
+
+Yes. WooThemes themes provides a short-code tag that allows you to embed any font in the body of a page or ppst.
+However, the list of fonts that the short-code quick-create function inb the content editor provides, will not
+be the full list of all fonts. So work around this, just select any random font, then change the name of the
+font manually in the short-code tag.
 
 == Screenshots ==
 
