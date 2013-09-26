@@ -17,7 +17,9 @@ class GoogleWebfontsForWooFrameworkAdmin extends GoogleWebfontsForWooFramework
     // Field names.
     const settings_form_id = 'gwfc_settings_form';
     const settings_field_api_key = 'googleApiKey';
+    const settings_field_font_subset = 'fontSubset';
     const settings_option_api_key = 'google_api_key';
+    const settings_option_font_subset = 'gwfc_google_webfont_subset';
     const settings_field_new_fonts = 'newFonts';
     const settings_field_old_fonts = 'oldFonts';
     const settings_field_preview = 'previewFonts';
@@ -38,6 +40,27 @@ class GoogleWebfontsForWooFrameworkAdmin extends GoogleWebfontsForWooFramework
         '700' => 'Bold',
         '800' => 'Extra-bold',
         '900' => 'Ultra-bold',
+    );
+
+    // The list of subsets that are (or will be) available from Google.
+    public $all_font_subsets = array(
+        'latin' => 'Latin',
+        'latin-ext' => 'Latin Extended',
+        'greek' => 'Greek',
+        'greek-ext' => 'Greek Extended',
+        'cyrillic' => 'Cyrillic',
+        'cyrillic-ext' => 'Cyrillic Extended',
+
+        //'menu' => 'Menu',
+
+        'arabic' => 'Arabic',
+        'bengali' => 'Bengali',
+        'hindi' => 'Hindi',
+        'khmer' => 'Khmer',
+        'korean' => 'Korean',
+        'lao' => 'Lao',
+        'tamil' => 'Tamil',
+        'vietnamese' => 'Vietnamese',
     );
 
     public function init()
@@ -143,6 +166,12 @@ class GoogleWebfontsForWooFrameworkAdmin extends GoogleWebfontsForWooFramework
             array($this, self::settings_field_api_key . 'Validate')
         );
 
+        register_setting(
+            self::settings_group_name, 
+            self::settings_option_font_subset,
+            array($this, self::settings_field_font_subset . 'Validate')
+        );
+
         // Register a section in the page.
 
         add_settings_section(
@@ -159,6 +188,15 @@ class GoogleWebfontsForWooFrameworkAdmin extends GoogleWebfontsForWooFramework
             self::settings_field_api_key,
             __('Google Developer API Key'),
             array($this, self::settings_field_api_key . 'Field'),
+            self::settings_page,
+            self::settings_section_id // section
+        );
+
+        // The font subsets.
+        add_settings_field(
+            self::settings_field_font_subset,
+            __('Requested font subsets'),
+            array($this, self::settings_field_font_subset . 'Field'),
             self::settings_page,
             self::settings_section_id // section
         );
@@ -200,9 +238,13 @@ class GoogleWebfontsForWooFrameworkAdmin extends GoogleWebfontsForWooFramework
         echo '<p>' . __('Google Webfonts for WooThemes Woo Framework. All fonts listed here are available to the theme.') . '</p>';
         echo '<p>' . __('Fonts shown selected here have been used in the theme.') . '</p>';
         echo '<p>';
-        echo __('To preview any fonts, select the fonts from either list and press the preview button.');
-        echo __(' A font shown with a weight "+italic" is a weight that has separate variants for the italicized and non-italicized styles.');
-        echo __(' Previews will display Google variants where available; the browser will make its own decision on how to display styles and weights where variants are not available.');
+        echo __('To preview any fonts, select the fonts from the "All Google Webfonts" list and press the preview button.');
+        echo " ";
+        echo __('A font shown with a weight "+italic" is a weight that has separate variants for the italicized and non-italicized styles.');
+        echo " ";
+        echo __('Previews will display Google variants where available; the browser will make its own decision on how to display styles and weights where variants are not available.');
+        echo " ";
+        echo __('The previews will also make an attempt to display character glyphs that are only available to the subsets selected.');
         echo '</p>';
     }
 
@@ -217,6 +259,23 @@ class GoogleWebfontsForWooFrameworkAdmin extends GoogleWebfontsForWooFramework
     public function googleApiKeyField() {
         $option = get_option(self::settings_option_api_key, '');
         echo "<input id='" . self::settings_option_api_key . "' name='" . self::settings_option_api_key . "' size='80' type='text' value='{$option}' />";
+    }
+
+    /**
+     * Render the font subset input fields (checkboxes).
+     * Give the box a class 'gwfc_google_webfont_subset_select' so the font previewer can find the checked boxes.
+     */
+
+    public function fontSubsetField() {
+        $option = get_option(self::settings_option_font_subset, 'latin');
+        $options = explode(',', $option);
+
+        foreach($this->all_font_subsets as $value => $label) {
+            echo "<label for='" . self::settings_option_font_subset . "_$value'>";
+            $checked = (in_array($value, $options) ? "checked='checked'" : '');
+            echo "<input class='gwfc_google_webfont_subset_select' type='checkbox' id='" . self::settings_option_font_subset . "_$value' name='" . self::settings_option_font_subset . "[$value]' value='$value' $checked />";
+            echo "$label</label>&nbsp; ";
+        }
     }
 
     /**
@@ -451,6 +510,28 @@ class GoogleWebfontsForWooFrameworkAdmin extends GoogleWebfontsForWooFramework
     }
 
     /**
+     * Validate the submitted fields.
+     */
+
+    public function fontSubsetValidate($input) {
+        // Make sure submitted values are in the allowable list, then convert them into a string.
+
+        $all_font_subsets = $this->all_font_subsets;
+
+        if (is_array($input)) {
+            foreach($input as $key => $value) {
+                if (!isset($all_font_subsets[$key])) unset($input[$key]);
+            }
+            $input = implode(',', array_keys($input));
+            if (empty($input)) $input = 'latin';
+        } else {
+            add_settings_error(self::settings_field_font_subset, 'texterror', __('Invalid selection made'), 'error');
+        }
+
+        return $input;
+    }
+
+    /**
      * Get a list of all the fonts used in the theme at present.
      * TODO: check out global $woo_used_google_fonts first.
      */
@@ -570,6 +651,7 @@ class GoogleWebfontsForWooFrameworkAdmin extends GoogleWebfontsForWooFramework
             $fonts[$font['family']] = $variants;
         }
 
+        // Sort by keys, which will be the font name.
         ksort($fonts);
 
         return $fonts;
