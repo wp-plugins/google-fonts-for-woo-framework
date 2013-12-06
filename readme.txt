@@ -3,8 +3,8 @@ Contributors: judgej
 Donate link: https://www.paypal.com/cgi-bin/webscr?cmd=_s-xclick&hosted_button_id=B4STZL8F5WHK6
 Tags: woothemes, google webfonts, typography, fonts, woo framework
 Requires at least: 3.3
-Tested up to: 3.6.1
-Stable tag: 1.3.2
+Tested up to: 3.7.1
+Stable tag: 1.3.3
 License: GPLv2 or later
 License URI: http://www.gnu.org/licenses/gpl-2.0.html
 
@@ -50,7 +50,7 @@ Please let me know how this plugin works for you, whether you like it, and how i
 
 = What if I don't have a Google API key? =
 
-No problem! From version 1.2.0 this plugin carries a list of fonts and variants as a fall-back. If the API key is not
+No problem! From version 1.2.0 this plugin carries a list of fonts and variants as a fallback. If the API key is not
 entered or the API key is invalid, then the plugin will use the fallback list. This list initially contains 652 fonts
 but will slowly get out of date as Google extends its fonts. It will be refreshed on each new version of the plugin
 however.
@@ -69,7 +69,7 @@ Feel free to raise issues there and make pull requests, as well as in the normal
 The option used to store your API key shares it name with several other popular Google Webfonts plugins.
 If you have used, or are using, those plugins too, then the API key setting will be shared. This is by design.
 
-= I see errors reported when fetching the nerw Google webfonts =
+= I see errors reported when fetching the new Google webfonts =
 
 Some hosts may not be set up to allow your site to fetch data from remote sites. Please report any 
 such errors on the plugin page or github, and we will try looking for a workaround.
@@ -127,6 +127,9 @@ https://github.com/academe/GoogleFontMetadata
 2. 
 
 == Changelog ==
+
+= Version 1.3.3 =
+* New fontsin fallback  list: Alegreya Sans, Alegreya Sans SC, Exo 2, Kantumruy, Kdam Thmor plus "normal" weight for Sniglet.
 
 = Version 1.3.2 =
 * An official release of 1.3.1 with some minor text amendments.
