@@ -3,8 +3,8 @@ Contributors: judgej
 Donate link: https://www.paypal.com/cgi-bin/webscr?cmd=_s-xclick&hosted_button_id=B4STZL8F5WHK6
 Tags: woothemes, google webfonts, typography, fonts, woo framework
 Requires at least: 3.3
-Tested up to: 3.7.1
-Stable tag: 1.3.3
+Tested up to: 3.8.0
+Stable tag: 1.4.1
 License: GPLv2 or later
 License URI: http://www.gnu.org/licenses/gpl-2.0.html
 
@@ -26,10 +26,17 @@ What you should then see, is the ability to select any available Google web font
 
 To get the absolute latest fonts from Google, register for a Google API key, and turn on the "webfonts" API for that key here:
 
-[http://code.google.com/apis/console](http://code.google.com/apis/console)
+[https://cloud.google.com/console](https://cloud.google.com/console)
 
-However, this plugin has a fallback list of fonts, so you can try it out without an API key, and that might even be
-good enough for your purposes.
+You first create a project (call it "Fonts API" or something like that, so you remember what the project was for).
+Then you add an API key to the project, then switch on the "Web Fonts Developer API" service for that API.
+
+*However*, this plugin has a fallback list of fonts, so you can try it out without an API key, and that might even be
+good enough for your purposes. So you don't need to get technical to get started.
+
+In addition, you can select the weights that will be downloaded. If you only use light/regular/bold (300/400/700) then
+there is no point requesting all the additional weights from some of the fonts that are more complete, but
+consequently are a very heavy download. This plugin will help to keep the bandwidth down, and so the load speed higher.
 
 This plugin has been tested against PHP5.3 and the project repository is here:
 
@@ -57,7 +64,7 @@ however.
 
 = Where do I get a Google API key? =
 
-A Google API key can be obtained here: http://code.google.com/apis/console
+A Google API key can be obtained here: https://cloud.google.com/console?redirected=true
 
 = How can I contribute to this plugin? =
 
@@ -128,8 +135,15 @@ https://github.com/academe/GoogleFontMetadata
 
 == Changelog ==
 
+= Version 1.4.1 =
+* Filter out weights that have not been selected in the admin page, to reduce bandwidth.
+* Display additional error details when the API cannot be accessed.
+
+= Version 1.3.4 =
+* Updated URL and instructions for the Google webfonts console (to get an API key).
+
 = Version 1.3.3 =
-* New fontsin fallback  list: Alegreya Sans, Alegreya Sans SC, Exo 2, Kantumruy, Kdam Thmor plus "normal" weight for Sniglet.
+* New fonts in fallback list: Alegreya Sans, Alegreya Sans SC, Exo 2, Kantumruy, Kdam Thmor plus "normal" weight for Sniglet.
 
 = Version 1.3.2 =
 * An official release of 1.3.1 with some minor text amendments.
